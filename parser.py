@@ -3,6 +3,8 @@ import re
 from dataclasses import dataclass
 from typing import Any
 
+from .keys import BASE_INFO_KEY, ERRORS_KEY, YAO_DATA_KEY
+
 SIX_GOD_MAP = {
     "虎": "白虎",
     "白虎": "白虎",
@@ -79,6 +81,18 @@ class ParsedYaoLine:
 class LiuYaoParser:
     @staticmethod
     def parse(raw_text: str) -> dict[str, Any]:
+        # Guard against oversized payloads to avoid blocking the event loop too long.
+        if len(raw_text or "") > 12000:
+            return {
+                BASE_INFO_KEY: {},
+                YAO_DATA_KEY: [],
+                ERRORS_KEY: [
+                    {
+                        "code": "E001",
+                        "message": "输入文本过长，请控制在 12000 字以内。",
+                    },
+                ],
+            }
         lines = [
             line.rstrip() for line in (raw_text or "").splitlines() if line.strip()
         ]
@@ -86,9 +100,9 @@ class LiuYaoParser:
         yao_lines = LiuYaoParser._parse_yao_lines(lines)
 
         return {
-            "基础信息": base_info,
-            "爻象数据": [item.to_dict() for item in yao_lines],
-            "errors": [],
+            BASE_INFO_KEY: base_info,
+            YAO_DATA_KEY: [item.to_dict() for item in yao_lines],
+            ERRORS_KEY: [],
         }
 
     @staticmethod

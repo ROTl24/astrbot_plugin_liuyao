@@ -4,15 +4,17 @@ from typing import Any
 
 from astrbot.api import logger, sp
 from astrbot.api.event import AstrMessageEvent, filter
-from astrbot.api.star import Context, Star, register
+from astrbot.api.star import Context, Star
 from astrbot.core.astr_main_agent_resources import retrieve_knowledge_base
 
+from .keys import ERRORS_KEY
 from .parser import LiuYaoParser
 from .prompt import build_system_prompt, build_user_prompt
 from .validator import format_errors, validate
 
+MAX_RAW_TEXT_LEN = 12000
 
-@register("astrbot_plugin_liuyao", "Xiaolu", "六爻占卜解析助手", "0.1.0")
+
 class LiuYaoPlugin(Star):
     def __init__(self, context: Context, config: dict | None = None):
         super().__init__(context, config)
@@ -30,15 +32,22 @@ class LiuYaoPlugin(Star):
                 "插件已加载。请在同一条消息中发送 `/liuyao` + 六爻排盘纯文本。",
             )
             return
+        if len(raw_text) > MAX_RAW_TEXT_LEN:
+            yield event.plain_result(
+                f"输入文本过长（>{MAX_RAW_TEXT_LEN} 字），请精简后重试。",
+            )
+            return
 
         parsed = LiuYaoParser.parse(raw_text)
         ok, errors = validate(parsed)
         if not ok:
             yield event.plain_result(format_errors(errors))
             if self._cfg_bool("debug", False):
+                parsed_debug = dict(parsed)
+                parsed_debug[ERRORS_KEY] = errors
                 yield event.plain_result(
                     "解析 JSON（debug）:\n"
-                    + json.dumps(parsed, ensure_ascii=False, indent=2),
+                    + json.dumps(parsed_debug, ensure_ascii=False, indent=2),
                 )
             return
 

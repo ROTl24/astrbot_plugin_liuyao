@@ -1,9 +1,19 @@
 from typing import Any
 
+from .keys import (
+    BASE_INFO_KEY,
+    ERRORS_KEY,
+    FIELD_BIAN_YAO,
+    FIELD_BIAN_YINYANG,
+    FIELD_INDEX,
+    FIELD_MOVING,
+    YAO_DATA_KEY,
+)
+
 
 def validate(parsed_json: dict[str, Any]) -> tuple[bool, list[dict[str, str]]]:
-    errors: list[dict[str, str]] = list(parsed_json.get("errors", []))
-    yao_list = parsed_json.get("爻象数据", [])
+    errors: list[dict[str, str]] = list(parsed_json.get(ERRORS_KEY, []))
+    yao_list = parsed_json.get(YAO_DATA_KEY, [])
 
     if len(yao_list) != 6:
         errors.append(
@@ -13,7 +23,7 @@ def validate(parsed_json: dict[str, Any]) -> tuple[bool, list[dict[str, str]]]:
             },
         )
 
-    indexes = [item.get("index") for item in yao_list if isinstance(item, dict)]
+    indexes = [item.get(FIELD_INDEX) for item in yao_list if isinstance(item, dict)]
     if sorted(indexes) != [1, 2, 3, 4, 5, 6]:
         errors.append(
             {
@@ -25,16 +35,20 @@ def validate(parsed_json: dict[str, Any]) -> tuple[bool, list[dict[str, str]]]:
     for item in yao_list:
         if not isinstance(item, dict):
             continue
-        is_moving = bool(item.get("动爻"))
-        if is_moving and (not item.get("变卦爻") or not item.get("变卦爻阴阳")):
+        is_moving = bool(item.get(FIELD_MOVING))
+        if is_moving and (
+            not item.get(FIELD_BIAN_YAO) or not item.get(FIELD_BIAN_YINYANG)
+        ):
             errors.append(
                 {
                     "code": "E201",
-                    "message": f"第 {item.get('index')} 爻为动爻，但缺少变卦爻/变卦爻阴阳。",
+                    "message": (
+                        f"第 {item.get(FIELD_INDEX)} 爻为动爻，"
+                        "但缺少变卦爻/变卦爻阴阳。"
+                    ),
                 },
             )
 
-    parsed_json["errors"] = errors
     return len(errors) == 0, errors
 
 
@@ -50,9 +64,16 @@ def format_errors(errors: list[dict[str, str]]) -> str:
 
 if __name__ == "__main__":
     broken = {
-        "基础信息": {},
-        "爻象数据": [{"index": 6, "动爻": True, "变卦爻": None, "变卦爻阴阳": None}],
-        "errors": [],
+        BASE_INFO_KEY: {},
+        YAO_DATA_KEY: [
+            {
+                FIELD_INDEX: 6,
+                FIELD_MOVING: True,
+                FIELD_BIAN_YAO: None,
+                FIELD_BIAN_YINYANG: None,
+            },
+        ],
+        ERRORS_KEY: [],
     }
     ok, errs = validate(broken)
     print("ok =", ok)
