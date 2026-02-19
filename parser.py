@@ -44,6 +44,15 @@ BRANCH_WUXING = {
 }
 
 MOVING_MARKERS = {"X", "Χ", "×", "O", "○"}
+DRAW_PATTERN = re.compile(r"(?:-\s*-|—)\s*[XΧ×O○]?")
+YAO_POSITION_MAP = {
+    6: "上六",
+    5: "五爻",
+    4: "四爻",
+    3: "三爻",
+    2: "二爻",
+    1: "初爻",
+}
 
 
 @dataclass
@@ -172,8 +181,7 @@ class LiuYaoParser:
 
         god_raw, left_token, ben_token = parts[0], parts[1], parts[2]
         tail = " ".join(parts[3:])
-        draw_pattern = re.compile(r"(?:-\s*-|—)\s*[XΧ×O○]?")
-        first_draw = draw_pattern.search(tail)
+        first_draw = DRAW_PATTERN.search(tail)
         if not first_draw:
             return ParsedYaoLine(
                 index=index,
@@ -194,7 +202,7 @@ class LiuYaoParser:
         rest = tail[first_draw.end() :].strip()
         right_clean, shi_ying = LiuYaoParser._extract_shi_ying(rest)
 
-        second_draw = draw_pattern.search(right_clean)
+        second_draw = DRAW_PATTERN.search(right_clean)
         if second_draw:
             right_token_segment = right_clean[: second_draw.start()].strip()
             bian_hua = LiuYaoParser._detect_draw(second_draw.group(0))
@@ -323,8 +331,7 @@ class LiuYaoParser:
 
     @staticmethod
     def _pos_of(index: int) -> str:
-        mapping = {6: "上六", 5: "五爻", 4: "四爻", 3: "三爻", 2: "二爻", 1: "初爻"}
-        return mapping.get(index, str(index))
+        return YAO_POSITION_MAP.get(index, str(index))
 
 
 if __name__ == "__main__":

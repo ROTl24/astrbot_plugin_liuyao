@@ -13,11 +13,12 @@ from .prompt import build_system_prompt, build_user_prompt
 from .validator import format_errors, validate
 
 MAX_RAW_TEXT_LEN = 12000
+COMMAND_PATTERN = re.compile(r"^/liuyao(?:\s+|$)", flags=re.IGNORECASE)
 
 
 class LiuYaoPlugin(Star):
     def __init__(self, context: Context, config: dict | None = None):
-        super().__init__(context, config)
+        super().__init__(context)
         self.config = config or {}
 
     async def initialize(self) -> None:
@@ -89,7 +90,11 @@ class LiuYaoPlugin(Star):
             system_prompt += f"\n\n[Related Knowledge Base Results]\n{kb_context}"
 
         try:
-            if self._cfg_bool("stream", False):
+            cfg = self.context.get_config(umo=event.unified_msg_origin)
+            use_stream = bool(
+                cfg.get("provider_settings", {}).get("streaming_response", False),
+            )
+            if use_stream:
                 final_text = ""
                 async for chunk in provider.text_chat_stream(
                     prompt=user_prompt,
@@ -112,22 +117,6 @@ class LiuYaoPlugin(Star):
     async def _resolve_kb_context(
         self, event: AstrMessageEvent, query: str
     ) -> str | None:
-        kb_collection = (self.config.get("kb_collection") or "").strip()
-        if kb_collection:
-            try:
-                cfg = self.context.get_config(umo=event.unified_msg_origin)
-                kb_result = await self.context.kb_manager.retrieve(
-                    query=query,
-                    kb_names=[kb_collection],
-                    top_k_fusion=cfg.get("kb_fusion_top_k", 20),
-                    top_m_final=cfg.get("kb_final_top_k", 5),
-                )
-                if kb_result:
-                    return kb_result.get("context_text", "")
-            except Exception as exc:
-                logger.error(f"Custom kb_collection retrieve failed: {exc!s}")
-            return None
-
         try:
             return await retrieve_knowledge_base(
                 query=query,
@@ -139,16 +128,13 @@ class LiuYaoPlugin(Star):
             return None
 
     async def _resolve_persona_prompt(self, event: AstrMessageEvent) -> str:
-        persona_id = (self.config.get("persona_id") or "").strip()
-
-        if not persona_id:
-            session_cfg = await sp.get_async(
-                scope="umo",
-                scope_id=event.unified_msg_origin,
-                key="session_service_config",
-                default={},
-            )
-            persona_id = (session_cfg.get("persona_id") or "").strip()
+        session_cfg = await sp.get_async(
+            scope="umo",
+            scope_id=event.unified_msg_origin,
+            key="session_service_config",
+            default={},
+        )
+        persona_id = (session_cfg.get("persona_id") or "").strip()
 
         if not persona_id:
             cfg = self.context.get_config(umo=event.unified_msg_origin)
@@ -171,12 +157,23 @@ class LiuYaoPlugin(Star):
     @staticmethod
     def _extract_raw_text(message_str: str) -> str:
         text = (message_str or "").strip()
-        text = re.sub(r"^/liuyao(?:\s+|$)", "", text, count=1, flags=re.IGNORECASE)
+        text = COMMAND_PATTERN.sub("", text, count=1)
         return text.strip()
 
     def _cfg_bool(self, key: str, default: bool) -> bool:
         value = self.config.get(key, default)
-        return bool(value)
+        if isinstance(value, bool):
+            return value
+        if value is None:
+            return default
+        if isinstance(value, (int, float)):
+            return value != 0
+        text = str(value).strip().lower()
+        if text in {"true", "1", "yes", "on"}:
+            return True
+        if text in {"false", "0", "no", "off", ""}:
+            return False
+        return default
 
     def _cfg_str(self, key: str, default: str) -> str:
         value = self.config.get(key, default)

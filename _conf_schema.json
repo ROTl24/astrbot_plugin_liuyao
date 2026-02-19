@@ -7,12 +7,6 @@
     "editor_mode": true,
     "editor_language": "markdown"
   },
-  "stream": {
-    "type": "bool",
-    "default": false,
-    "description": "流式生成",
-    "hint": "开启后以流式方式调用模型（插件内部仍会整合为最终结果返回）。"
-  },
   "debug": {
     "type": "bool",
     "default": false,
