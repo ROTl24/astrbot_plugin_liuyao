@@ -1,0 +1,22 @@
+{
+  "custom_system_prompt": {
+    "type": "string",
+    "default": "",
+    "description": "自定义系统提示词",
+    "hint": "留空时使用插件内置默认提示词；填写后优先使用你输入的提示词。",
+    "editor_mode": true,
+    "editor_language": "markdown"
+  },
+  "stream": {
+    "type": "bool",
+    "default": false,
+    "description": "流式生成",
+    "hint": "开启后以流式方式调用模型（插件内部仍会整合为最终结果返回）。"
+  },
+  "debug": {
+    "type": "bool",
+    "default": false,
+    "description": "调试模式",
+    "hint": "开启后额外回显解析后的 JSON（含 raw 行），便于对盘排错。"
+  }
+}
