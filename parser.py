@@ -43,8 +43,8 @@ BRANCH_WUXING = {
     "亥": "水",
 }
 
-MOVING_MARKERS = {"X", "Χ", "×", "O", "○"}
-DRAW_PATTERN = re.compile(r"(?:-\s*-|—)\s*[XΧ×O○]?")
+MOVING_MARKERS = {"X", "Χ", "×", "O", "Ｏ","○"}
+DRAW_PATTERN = re.compile(r"(?:-\s*-|—)\s*[XΧ×OＯ○]?")
 YAO_POSITION_MAP = {
     6: "上六",
     5: "五爻",
